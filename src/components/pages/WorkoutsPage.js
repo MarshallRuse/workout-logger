@@ -1,21 +1,29 @@
-import React, { useState, useEffect, useContext  } from 'react';
-import { makeStyles, useTheme } from '@material-ui/styles';
-import { Fab, Grid, Paper, Typography, Zoom } from '@material-ui/core';
+import React, { Component } from 'react';
+import moment from 'moment';
+import { withStyles } from '@material-ui/styles';
+import { 
+    Fab, 
+    Grid, 
+    Paper, 
+    Typography, 
+    Zoom } from '@material-ui/core';
 import { Add } from '@material-ui/icons';
 
 import WorkoutCard from '../elements/cards/WorkoutCard';
 import WorkoutDialog from '../elements/dialogs/WorkoutDialog';
 
-import AuthContext from '../../context/AuthContext';
-import PageContext from '../../context/PageContext';
+import ProvideAppContext, { AppContext } from '../../context/ProvideAppContext';
 
 import { db } from '../../firebase/firebase';
-import moment from 'moment';
 
 
-const useStyles = makeStyles(theme => ({
+const styles = theme => ({
+    cardGridItem: {
+        width: '100%'
+    },
     container: {
-        height: 'calc(100% - 56px - 56px)'
+        height: 'auto',
+        marginTop: '20px'
     },
     fab: {
         position: 'fixed',
@@ -23,7 +31,7 @@ const useStyles = makeStyles(theme => ({
         right: theme.spacing(4),
     },
     groupHeading: {
-        color: 'blue',
+        color: theme.palette.secondary.dark,
         padding: '10px',
         width: '100%',
     },
@@ -33,107 +41,271 @@ const useStyles = makeStyles(theme => ({
         overflowY: 'auto' 
     },
     toolbar: theme.mixins.toolbar
-}))
+})
 
-const WorkoutsPage = ({ history }) => {
-    const classes = useStyles();
-    const theme = useTheme();
-    const { authState } = useContext(AuthContext);
-    const { pageState, pageDispatch } = useContext(PageContext);
-    if (pageState.currentPage !== 'WORKOUTS'){
-        pageDispatch({ type: 'SET_CURRENT_PAGE', currentPage: 'WORKOUTS' });
-    } 
+class WorkoutsPage extends Component {
+    static contextType = AppContext;
 
-    const [workouts, setWorkouts] = useState([]);
-    const [workoutDialogOpen, setWorkoutDialogOpen] = useState(false);
-    const [editMode, setEditMode] = useState(false);
-    const [workoutToEdit, setWorkoutToEdit] = useState(undefined);
+    state = {
+        workouts: undefined,
+        exerciseInstances: [],
+        exerciseInstancesFetched: false,
+        workoutDialogOpen: false,
+        editMode: false,
+        workoutToEdit: undefined,
+        unsubscribe: undefined
+    }
+    
+    componentDidMount(){
+        const unsubscribe =  db.collection('users')
+                                .doc(this.context.authState.uid)
+                                .collection('workouts')
+                                .orderBy('date')
+                                .onSnapshot((snapshot) => {
+                                    let workoutsDocs = snapshot.docs;
+                                    const workouts = workoutsDocs.map((doc) => ({
+                                        id: doc.id,
+                                        ...doc.data()
+                                    }));
 
-    const transitionDuration = {
-        enter: theme.transitions.duration.enteringScreen,
-        exit: theme.transitions.duration.leavingScreen,
-    };
+                                    this.setState(() => ({ workouts }))
+                                });
 
+        this.setState(() => ({ unsubscribe }));
 
-    useEffect(() => {
-       const unsubscribe =  db.collection(`users/${authState.uid}/workouts`).onSnapshot((snapshot) => {
-            let changes = snapshot.docChanges();
-            const workouts = changes.filter((change) => (change.type === 'added' || change.type === 'modified') && change.doc );
-            setWorkouts(workouts);
-            
-        });
-
-        return () => {
-            unsubscribe();
+        // To prevent state updates while component is unmounted, dont dispatch until
+        // firebase listener established 
+        if (this.state.unsubscribe){
+            if (this.context.pageState.currentPage !== 'WORKOUTS'){
+                this.context.pageDispatch({ type: 'SET_CURRENT_PAGE', currentPage: 'WORKOUTS' });
+            } 
         }
-
-    }, [authState.uid]);
-
-    const addWorkout = () => {
-        setWorkoutDialogOpen(true);
     }
 
-    const editWorkout = (workout) => {
-        setEditMode(true);
-        setWorkoutToEdit(workout);
-        setWorkoutDialogOpen(true);
+    async componentDidUpdate(){
+        if (this.state.workouts && !this.state.exerciseInstancesFetched){
+            this.fetchExerciseInstances();
+            this.setState(() => ({ exerciseInstancesFetched: true }));
+        }
     }
 
-    const deleteWorkout = () => {
-
+    componentWillUnmount(){
+        if (this.state.unsubscribe){
+            this.state.unsubscribe();
+        }
     }
 
-    const closeWorkoutDialog = () => {
-        setWorkoutDialogOpen(false);
-        setEditMode(false);
-        setWorkoutToEdit(undefined);
-    }
+    fetchExerciseInstances = async () => {
+        const exInstRef = db.collection('users').doc(this.context.authState.uid).collection('exerciseInstances');
+        const exerciseInstances = await Promise.all(this.state.workouts.map(async (workout) => {
+            let workoutsExerciseInstances = await exInstRef
+                                            .where('workoutID', '==', workout.id)
+                                            .get()
+                                            .then((snapshot) => {
+                                                return snapshot.docs.map((doc) => ({
+                                                    id: doc.id,
+                                                    exerciseInstance: {...doc.data()}
+                                                }))
+                                            });
 
-    return (
-        <>
-            <Grid container direction='row' justify='center' alignItems='center' className={classes.container}>
-                { (workouts && workouts.length > 0) 
-                    ?   workouts.map((workout, index) => (
-                                <Grid item xs={10} key={index}>
-                                    <Typography variant='h5' align='left' className={classes.groupHeading}>
-                                        {moment(workout.doc.data().date.toDate()).format('MMMM Do, YYYY')}
-                                    </Typography>
-                                    <WorkoutCard 
-                                        workout={workout.doc} 
-                                        editWorkout={editWorkout} 
-                                        deleteWorkout={deleteWorkout} 
-                                    />
-                                </Grid>
-                            )
-                        )
-                    :   <Grid item xs={10}>
-                            <Paper className={classes.paper}>
-                                <Typography variant='subtitle1' align='center' style={{color: '#7b7b7b'}}>
-                                    Add your first workout journal entry!
-                                </Typography>
-                            </Paper>
-                        </Grid>
+            workoutsExerciseInstances = await Promise.all(workoutsExerciseInstances.map(async (inst) => {
+                const sets = await exInstRef.doc(inst.id)
+                            .collection('sets')
+                            .get()
+                            .then((snapshot) => {
+                                return snapshot.docs.map((doc) => ({
+                                    id: doc.id,
+                                    set: {...doc.data()} 
+                                }));
+                            })
+                return {
+                    ...inst,
+                    sets
                 }
-            </Grid>  
-            <Zoom
-                in={true}
-                timeout={transitionDuration}
-                unmountOnExit
-            >
-                <Fab aria-label='Add' className={classes.fab} color='secondary' onClick={addWorkout}>
-                    <Add />
-                </Fab>
-            </Zoom>
-            <WorkoutDialog
-                open={workoutDialogOpen} 
-                onClose={closeWorkoutDialog}
-                editMode={editMode}
-                workoutToEdit={workoutToEdit}
-                history={history}
-            />
-            
-        </>
-    )
+            }));   
+                
+            return {
+                workoutID: workout.id,
+                exerciseInstances: workoutsExerciseInstances
+            };        
+        }));
+        this.setState(() => ({ exerciseInstances }));
+    }
+
+    
+    handleAddWorkout = () => {
+        this.setState(() => ({ workoutDialogOpen: true }));
+    }
+
+    onAddWorkout = (workoutRef) => {
+        if (this.state.workouts){
+            this.setState((prevState) => ({
+                workouts: [
+                    ...prevState.workouts, 
+                    {  
+                        id: workoutRef.id, 
+                        ...workoutRef.data()
+                    }
+                ]}),
+                () => {
+                    this.fetchExerciseInstances();
+                    this.props.history.push(`/workouts/${workoutRef.id}`);
+                }
+            );
+        } else {
+            this.setState(() => ({
+                workouts: [{
+                    id: workoutRef.id,
+                    ...workoutRef.data()
+                }]
+            }), 
+            () => {
+                this.fetchExerciseInstances();
+                this.props.history.push(`/workouts/${workoutRef.id}`);
+            })
+        }
+    
+    }
+
+    editWorkout = (workout) => {
+        this.setState(() => ({
+            editMode: true,
+            workoutToEdit: workout,
+            workoutDialogOpen: true
+        }));
+    }
+
+    deleteWorkout = (workoutID) => {
+        // Have to manually delete everything
+        // Delete all subcollections associated with this workouts exercises
+        if (this.state.exerciseInstances){
+            const instances = this.state.exerciseInstances.find((inst) => inst.workoutID === workoutID).exerciseInstances;
+            if (instances && instances.length > 0){
+                instances.forEach(inst => {
+
+                    // Delete all sets associated with each instance
+                    const sets = inst.sets;
+                    if (sets && sets.length > 0){
+                        sets.forEach(set => {
+                            db.collection('users')
+                            .doc(this.context.authState.uid)
+                            .collection('exerciseInstances')
+                            .doc(inst.id)
+                            .collection('sets')
+                            .doc(set.id)
+                            .delete()
+                        }) 
+                    }
+
+                    db.collection('users')
+                    .doc(this.context.authState.uid)
+                    .collection('exerciseInstances')
+                    .doc(inst.id)
+                    .delete();
+                })
+            }
+        } 
+
+        db.collection('users')
+        .doc(this.context.authState.uid)
+        .collection('workouts')
+        .doc(workoutID)
+        .delete();
+    }
+
+    closeWorkoutDialog = () => {
+        this.setState(() => ({
+            workoutDialogOpen: false,
+            editMode: false,
+            workoutToEdit: undefined
+        }));
+    }
+
+    getExerciseInstances = (workout) => {
+        let result;
+        if (this.state.exerciseInstances && this.state.exerciseInstances.length > 0){
+            const thisWorkoutsExerciseInstances = this.state.exerciseInstances.find(inst => inst.workoutID === workout.id);
+            if (thisWorkoutsExerciseInstances){
+                result = thisWorkoutsExerciseInstances.exerciseInstances;
+            } else {
+                result = [];
+            }
+        } else {
+            result = [];
+        }
+        return result;
+    }
+
+    render(){
+        const { history, classes } = this.props;
+
+        const transitionDuration = {
+            enter: this.context.theme.transitions.duration.enteringScreen,
+            exit: this.context.theme.transitions.duration.leavingScreen,
+        };
+
+
+        return (
+            <>
+                <Grid 
+                    container 
+                    direction='column' 
+                    justify='center' 
+                    alignItems='center' 
+                    className={classes.container}
+                >
+                    { (this.state.workouts && this.state.workouts.length > 0) 
+                        ?   this.state.workouts.map((workout, index) => (
+                                    <Grid item xs={10} key={index} className={classes.cardGridItem}>
+                                        <Typography variant='h5' align='left' className={classes.groupHeading}>
+                                            {moment(workout.date.toDate()).format('MMMM Do, YYYY')}
+                                        </Typography>
+                                        <WorkoutCard 
+                                            workout={workout}
+                                            exerciseInstances={this.getExerciseInstances(workout)} 
+                                            editWorkout={this.editWorkout} 
+                                            deleteWorkout={this.deleteWorkout} 
+                                        />
+                                    </Grid>
+                                )
+                            )
+                        :   <Grid item xs={10}>
+                                <Paper className={classes.paper}>
+                                    <Typography variant='subtitle1' align='center' style={{color: '#7b7b7b'}}>
+                                        Add your first workout journal entry!
+                                    </Typography>
+                                </Paper>
+                            </Grid>
+                    }
+                </Grid>  
+                <Zoom
+                    in={true}
+                    timeout={transitionDuration}
+                    unmountOnExit
+                >
+                    <Fab aria-label='Add' className={classes.fab} color='secondary' onClick={this.handleAddWorkout}>
+                        <Add />
+                    </Fab>
+                </Zoom>
+
+                <WorkoutDialog
+                    open={this.state.workoutDialogOpen} 
+                    onClose={this.closeWorkoutDialog}
+                    onAddWorkout={this.onAddWorkout}
+                    editMode={this.state.editMode}
+                    workoutToEdit={this.state.workoutToEdit}
+                    history={history}
+                /> 
+            </>
+        )
+    }
+    
 };
 
-export default WorkoutsPage;
+const WorkoutsPageWithContext = props => (
+    <ProvideAppContext>
+        <WorkoutsPage {...props} />
+    </ProvideAppContext>
+)
+
+export default withStyles(styles)(WorkoutsPageWithContext);

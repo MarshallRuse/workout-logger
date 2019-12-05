@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { 
     Button,
     Dialog, 
@@ -10,7 +10,6 @@ import { DatePicker } from '@material-ui/pickers';
 import { withStyles } from '@material-ui/styles';
 import { Cancel, CheckCircle } from '@material-ui/icons';
 import { MuiPickersUtilsProvider } from '@material-ui/pickers';
-import moment from 'moment';
 import MomentUtils from '@date-io/moment';
 
 import AuthContext from '../../../context/AuthContext';
@@ -19,36 +18,46 @@ import { db } from '../../../firebase/firebase';
 
 
 const styles = theme => ({
+    
     input: {
         marginTop: '10px',
         marginBottom: '20px'
     },
+    spaceApart: {
+        display: 'flex',
+        justifyContent: 'space-between'
+    },
 });
 
-const WorkoutDialog = ({ open, onClose, editMode, workoutToEdit, history, classes }) => {
+const WorkoutDialog = ({ open, onClose, onAddWorkout, editMode, workoutToEdit, history, classes }) => {
     // Context
     const { authState } = useContext(AuthContext);
 
     // State
-    const [selectedDate, setSelectedDate] = useState(editMode ? workoutToEdit.data().date.toDate() : new Date());
+    const [selectedDate, setSelectedDate] = useState(new Date());
 
     // DB Reference
     const usersWorkoutsRef = db.collection(`users/${authState.uid}/workouts`);
-
-    if (workoutToEdit){
-        console.log('workoutToEdit Date: ', workoutToEdit.data().date.toDate());
-    }
     
-    
+    useEffect(() => {
+        if (editMode){
+            setSelectedDate(workoutToEdit.date.toDate());
+        }
+    }, [editMode, workoutToEdit])
 
     const handleDateChange = (date) => {
         setSelectedDate(date.toDate()); // moment object
     }
 
     const onCreateWorkout = () =>{
-        usersWorkoutsRef.add({ date: selectedDate });
-        onClose();
-        history.push(`/workouts/${moment(selectedDate).format('YYYY-MM-DD')}`);
+        usersWorkoutsRef.add({ date: selectedDate }).then((addedWorkoutRef) => {
+            usersWorkoutsRef.doc(addedWorkoutRef.id).get().then((addedWorkoutSnapshot) => {
+                onAddWorkout(addedWorkoutSnapshot);
+                onClose();
+            });
+
+            
+        });
     }
 
     const onEditWorkout = () => {
@@ -65,7 +74,7 @@ const WorkoutDialog = ({ open, onClose, editMode, workoutToEdit, history, classe
 
 
     return(
-        <Dialog open={ open } onClose={ handleCancel }>
+        <Dialog open={ open } onClose={ handleCancel } fullWidth>
             <DialogTitle id="workout-form-dialog-title">{editMode ? `Edit your Workout`: `Start a New Workout`}</DialogTitle>
             <DialogContent>
                 <MuiPickersUtilsProvider utils={MomentUtils}>
@@ -81,9 +90,18 @@ const WorkoutDialog = ({ open, onClose, editMode, workoutToEdit, history, classe
                         showTodayButton
                         variant='outlined'
                         className={classes.input}
+                        fullWidth
                     />
                     <br />
                     <div className={[classes.input, classes.spaceApart].join(' ')}>
+                        <Button 
+                            color="secondary" 
+                            variant='contained'
+                            onClick={handleCancel}
+                        >
+                            <Cancel style={{marginRight: '5px'}} fontSize='small' />
+                            Cancel
+                        </Button>
                         <Button 
                             style={{marginRight: '10px'}}
                             color="primary" 
@@ -93,14 +111,6 @@ const WorkoutDialog = ({ open, onClose, editMode, workoutToEdit, history, classe
                         >
                             <CheckCircle style={{marginRight: '5px'}} fontSize='small' />
                             {editMode ? 'Edit' : 'Create'}
-                        </Button>
-                        <Button 
-                            color="secondary" 
-                            variant='contained'
-                            onClick={handleCancel}
-                        >
-                            <Cancel style={{marginRight: '5px'}} fontSize='small' />
-                            Cancel
                         </Button>
                     </div>
                 </form>

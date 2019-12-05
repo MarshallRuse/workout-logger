@@ -1,12 +1,11 @@
 import React, { Component } from 'react';
+import { Link } from 'react-router-dom';
 import moment from 'moment';
 import {
     Button,
     ButtonBase,
     Dialog, 
     DialogActions,
-    DialogContent,
-    DialogContentText,
     DialogTitle,
     ExpansionPanel,
     ExpansionPanelSummary,
@@ -18,14 +17,12 @@ import {
 import { withStyles } from '@material-ui/styles';
 import { AddCircle, DeleteForever } from '@material-ui/icons';
 
-// import AuthContext from '../../context/AuthContext';
-// import WorkoutContext from '../../context/WorkoutContext';
-// import ExercisesContext from '../../context/ExercisesContext';
-// import PageContext from '../../context/PageContext';
 import ProvideAppContext, { AppContext } from '../../context/ProvideAppContext';
 
 import { db } from '../../firebase/firebase';
 import SetControls from '../elements/SetControls';
+
+import listString from '../../resources/utils/listString';
 
 const styles = theme => ({
     addSetButton: {
@@ -50,6 +47,10 @@ const styles = theme => ({
     },
     greyText: {
         color: theme.palette.text.secondary
+    },
+    link: {
+        color: 'inherit',
+        textDecoration: 'none',
     },
     setPanelButtonBase: {
         height: '100%',
@@ -177,7 +178,6 @@ class ExerciseInstancePage extends Component {
                                                 sets = this.zipSetsBySide(sets);
                                             }
 
-                                            console.log('Sets are: ', sets)
                                             this.setState(() => ({
                                                 sets,
                                                 expandedSet: `setPanel_${sets.length + 1}`
@@ -345,41 +345,43 @@ class ExerciseInstancePage extends Component {
             setToDelete: undefined
         }))
     }
- 
-    listString = (list) => {
-        let listString = '';
-
-        if (!list || list.length === 0){
-            return '';
-        } else if (list.length === 1){
-            return list[0];
-        } else {
-            list.forEach((item, index) => {
-                if (index === list.length - 1){
-                    listString = listString + item;
-                } else {
-                    listString = listString + item + ', ';
-                }
-            })
-        }
-        return listString
-    }
-    
 
 
     render(){
 
         const { classes } = this.props;
+
+        // Title
         const exerciseTitle = this.context.exercisesState.selectedExercise.title;
         let exerciseModifier = '';
         if (this.context.exercisesState.selectedExercise.modifiers && this.context.exercisesState.selectedExercise.modifiers.length > 0){
-            exerciseModifier += '(' + this.listString(this.context.exercisesState.selectedExercise.modifiers) + ')';
+            exerciseModifier += '(' + listString(this.context.exercisesState.selectedExercise.modifiers) + ')';
         }
-
+        // Unilateral Sides
         let initialSide, subsequentSide;
         if (this.state.sets.length > 0 && this.context.exercisesState.selectedExercise.laterality === 'unilateral'){
             initialSide = ['left', 'right'].filter(side => side === this.state.sets[0].initialSide.side)[0];
             subsequentSide = ['left', 'right'].filter(side => side !== initialSide)[0];
+        }
+        // Previous set stats
+        let prevSetStats = undefined;
+        if (this.state.sets.length > 0){
+            // bilateral
+            let prevSet;
+            if (this.context.exercisesState.selectedExercise.laterality === 'bilateral'){
+                prevSet = this.state.sets[this.state.sets.length - 1];
+            } else {
+                if (this.state.sets[this.state.sets.length - 1].subsequentSide){
+                    prevSet = this.state.sets[this.state.sets.length - 1].subsequentSide;
+                } else {
+                    prevSet = this.state.sets[this.state.sets.length - 1].initialSide;
+                }
+            }
+            prevSetStats = {
+                weight: prevSet.units === 'lbs' ? prevSet.weightLbs : prevSet.weightKg,
+                reps: prevSet.reps,
+                units: prevSet.units
+            }
         }
         
 
@@ -394,15 +396,20 @@ class ExerciseInstancePage extends Component {
                                 </Typography>
                             </Grid>
                             <Grid item xs={12} className={classes.titleText}>
-                                <Typography variant='h4' align='center'>
-                                    <strong>{exerciseTitle}</strong>
-                                    {exerciseModifier && (
-                                        <>
-                                            <br />
-                                            <strong>{exerciseModifier}</strong>
-                                        </>
-                                    )}
-                                </Typography>
+                                <Link 
+                                    to={`/exercises/${this.context.exercisesState.selectedExercise.id}`}
+                                    className={classes.link}
+                                >
+                                    <Typography variant='h4' align='center'>
+                                        <strong>{exerciseTitle}</strong>
+                                        {exerciseModifier && (
+                                            <>
+                                                <br />
+                                                <strong>{exerciseModifier}</strong>
+                                            </>
+                                        )}
+                                    </Typography>
+                                </Link>
                             </Grid>
                         </Paper>
                     </Grid>
@@ -427,7 +434,7 @@ class ExerciseInstancePage extends Component {
                                                             content: classes.setPanelSummaryContent }}
                                                     >
                                                         <Typography variant='body2'>
-                                                            {moment(set.completedAt.toDate()).format('hh:mm a')}
+                                                            {moment(set.completedAt.toDate()).format('h:mm a')}
                                                         </Typography>
                                                         <Typography variant='h6'>
                                                             {set.units === 'lbs' ? set.weightLbs : set.weightKg}
@@ -468,7 +475,6 @@ class ExerciseInstancePage extends Component {
                                                             root: classes.setPanelSummaryRoot, 
                                                             content: classes.setPanelSummaryContent }}
                                                     >
-                                                        {console.log('SET INITIAL SIDE: ', set.initialSide)}
                                                         {set.initialSide 
                                                             ?   (
                                                                 <>
@@ -526,7 +532,6 @@ class ExerciseInstancePage extends Component {
                                                             root: classes.setPanelSummaryRoot, 
                                                             content: classes.setPanelSummaryContent }}
                                                     >
-                                                        {console.log('SET SUBSEQUENT SIDE: ', set.subsequentSide)}
                                                         {set.subsequentSide 
                                                             ?   (
                                                                 <>
@@ -592,6 +597,7 @@ class ExerciseInstancePage extends Component {
                                         <SetControls
                                             laterality={this.context.exercisesState.selectedExercise.laterality}
                                             editMode={false}
+                                            prevSetStats={prevSetStats}
                                             onCreateSet={this.onCreateSet}
                                         /> 
                                     </ExpansionPanelDetails>

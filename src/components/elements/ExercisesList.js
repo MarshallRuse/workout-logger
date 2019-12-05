@@ -16,6 +16,8 @@ import { makeStyles } from '@material-ui/styles';
 
 import ExercisesContext from '../../context/ExercisesContext';
 
+import listString from '../../resources/utils/listString';
+
 const muscleGroups = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Forearms'];
 
 function getExercisesByGroup(allExercises, group){
@@ -31,7 +33,8 @@ const useStyles = makeStyles(theme => ({
         height: 'calc(100% - 56px - 56px)'
     },
     indicator: {
-        height: 5
+        height: 5,
+        width: '82px'
     },
     link: {
         color: 'inherit',
@@ -65,6 +68,10 @@ const useStyles = makeStyles(theme => ({
         padding: 20,
         overflowY: 'auto' 
     },
+    tabRoot: {
+        fontSize: '1.0rem',
+        padding: '15px'
+    },
     toolbar: theme.mixins.toolbar,
     ul: {
         backgroundColor: 'inherit',
@@ -96,24 +103,6 @@ const ExercisesList = ({ context, workoutID }) => {
 
     const onIndexSelect = (e, index) => onMuscleGroupSelect(muscleGroups[index - 1])
 
-    const listString = (list) => {
-        let listString = '';
-
-        if (!list || list.length === 0){
-            return '';
-        } else if (list.length === 1){
-            return list[0];
-        } else {
-            list.forEach((item, index) => {
-                if (index === list.length - 1){
-                    listString = listString + item;
-                } else {
-                    listString = listString + item + ', ';
-                }
-            })
-        }
-        return listString
-    }
 
     return (
         <>
@@ -237,9 +226,17 @@ const ExercisesList = ({ context, workoutID }) => {
                     textColor="inherit"
                     variant='scrollable'
                 >
-                    <Tab label='All' key={'All'}/>
+                    <Tab 
+                        label='All' 
+                        key={'All'}
+                        classes={{ root: classes.tabRoot }}
+                    />
                     {muscleGroups.map(group => 
-                        <Tab label={group} key={group}/>
+                        <Tab 
+                            label={group} 
+                            key={group}
+                            classes={{ root: classes.tabRoot }}
+                        />
                         )}
                 </Tabs>
             </AppBar>

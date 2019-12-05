@@ -1,5 +1,4 @@
 import React, { useContext, useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
     Button, 
     Dialog,
@@ -11,7 +10,7 @@ import {
     Typography
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
-import { ArrowBack, DeleteForever, Edit } from '@material-ui/icons';
+import { DeleteForever, Edit } from '@material-ui/icons';
 
 import ExerciseDialog from '../elements/dialogs/ExerciseDialog';
 
@@ -20,7 +19,7 @@ import ExercisesContext from '../../context/ExercisesContext';
 
 import { db } from '../../firebase/firebase';
 
-
+import listString from '../../resources/utils/listString';
 
 
 const useStyles = makeStyles(theme => ({
@@ -36,7 +35,6 @@ const useStyles = makeStyles(theme => ({
     },
     titleRow: {
         alignItems: 'center',
-        color: '#fff',
         display: 'flex',
         justifyContent: 'center',
         padding: '30px',
@@ -49,7 +47,7 @@ const ExercisePage = ({ match, history }) => {
     const { authState } = useContext(AuthContext); 
     const { exercisesState } = useContext(ExercisesContext);
     // Set default object to stop page crashing on rerender after delete and before history.replace
-    const [exercise, setExercise] = useState(exercisesState.exercises.find(exercise => exercise.id === match.params.exerciseID) || {
+    const [ exercise ] = useState(exercisesState.exercises.find(exercise => exercise.id === match.params.exerciseID) || {
         title: '',
         modifiers: [],
         muscleGroups: [],
@@ -69,8 +67,42 @@ const ExercisePage = ({ match, history }) => {
 
     const onDeleteExercise = () => {
         try {
-            db.collection('users').doc(authState.uid).collection('exercises').doc(exercise.id).delete();
-            history.replace('/exercises');
+
+            // Delete all exercise instances associated with this exercise, as well as their sets
+            db.collection('users')
+            .doc(authState.uid)
+            .collection('exerciseInstances')
+            .where('exerciseID', '==', exercise.id)
+            .get()
+            .then(snapshot => {
+                return snapshot.docs.map(doc => ({
+                                    id: doc.id,
+                                    ref: doc.ref,
+                                    ...doc.data()
+                                }));
+            })
+            .then((exerciseInstances) => {
+                exerciseInstances.forEach(inst => {
+                    db.collection('users')
+                    .doc(authState.uid)
+                    .collection('exerciseInstances')
+                    .doc(inst.id)
+                    .collection('sets')
+                    .get()
+                    .then((snapshot) => {
+                        snapshot.docs.forEach(doc => {
+                            doc.ref.delete();
+                        });
+                    });
+                    inst.ref.delete();
+                });
+                return;
+            })
+            .then(() => {
+                db.collection('users').doc(authState.uid).collection('exercises').doc(exercise.id).delete();
+                history.replace('/exercises');
+            });
+            
         } catch(err){
             alert('Error deleting exercise: ', err);
         }
@@ -85,24 +117,6 @@ const ExercisePage = ({ match, history }) => {
         setDeleteDialogOpen(false);
     }
 
-    const listString = (list) => {
-        let listString = '';
-
-        if (!list || list.length === 0){
-            return '';
-        } else if (list.length === 1){
-            return list[0];
-        } else {
-            list.forEach((item, index) => {
-                if (index === list.length - 1){
-                    listString = listString + item;
-                } else {
-                    listString = listString + item + ', ';
-                }
-            })
-        }
-        return listString
-    }
 
     // Inline template string was getting a bit long and wasn't behaving
     let exerciseTitle = exercise.title
@@ -114,14 +128,6 @@ const ExercisePage = ({ match, history }) => {
         <>
             <Grid container justify='center'>
                 <Grid item xs={12} className={classes.titleRow}>
-                    <Link to='/exercises' className={classes.link} >
-                        <ArrowBack />
-                        <Typography variant='body1'>  
-                            All Exercises
-                        </Typography>
-                    </Link>
-                </Grid>
-                <Grid item xs={12}>
                     <Typography variant='h4' align='center'>
                         {exerciseTitle}
                     </Typography>

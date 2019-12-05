@@ -1,8 +1,7 @@
-import React, { Fragment, useContext, useState } from 'react';
+import React, { Fragment, useState } from 'react';
 import { withStyles } from '@material-ui/styles';
 import { AppBar, IconButton, Toolbar, Typography } from '@material-ui/core';
 import { Menu } from '@material-ui/icons';
-import DrawerContext from '../../context/DrawerContext';
 
 import SideDrawer from './SideDrawer';
 

@@ -1,17 +1,27 @@
-import React, { Component } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
 import moment from 'moment';
 import { 
+    Button,
     ButtonBase, 
     Card, 
     CardContent, 
     CardActions,
+    Dialog,
+    DialogTitle,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
     Menu,
     MenuItem,
     Typography 
 } from '@material-ui/core';
-import { makeStyles, useTheme } from '@material-ui/core/styles';
-import { MoreHoriz } from '@material-ui/icons';
+import { makeStyles } from '@material-ui/core/styles';
+import { Delete, DeleteForever, Forward, MoreHoriz } from '@material-ui/icons';
+
+import AuthContext from '../../../context/AuthContext';
+import ExercisesContext from '../../../context/ExercisesContext';
+
+import { db } from '../../../firebase/firebase';
 
 
 const useStyles = makeStyles(theme => ({
@@ -23,6 +33,12 @@ const useStyles = makeStyles(theme => ({
     },
     cardActions: {
         justifyContent: 'flex-end'
+    },
+    cardField: {
+        color: theme.palette.text.secondary,
+        fontWeight: 500,
+        marginRight: '5px',
+        marginBottom: '10px'
     },
     costDiv: {
         marginTop: '5px',
@@ -39,77 +55,119 @@ const useStyles = makeStyles(theme => ({
     }
 }));
 
-class ExerciseInstanceCard extends Component {
+const ExerciseInstanceCard = ({ exercise, exerciseInstance, history }) => {
 
-    state = {
-        moreActionsOpen: false,
-        anchorEl: undefined,
-        exercises: [],
-        dateRange: '',
-        numUniqueExercises: 0,
+    const classes = useStyles();
+
+    // Context
+    const { authState } = useContext(AuthContext);
+    const { exercisesState, exercisesDispatch } = useContext(ExercisesContext);
+
+    // State 
+    const [sets, setSets] = useState(undefined);
+    const [moreActionsOpen, setMoreActionsOpen] = useState(false);
+    const [anchorEl, setAnchorEl] = useState(undefined);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    
+    const exerciseInstanceRef = db.collection('users').doc(authState.uid).collection('exerciseInstances').doc(exerciseInstance.id)
+
+    // Fetch sets on load
+    if (!sets){
+        exerciseInstanceRef
+            .collection('sets')
+            .orderBy('completedAt')
+            .get()
+            .then((snapshot) => {
+                const fetchedSets = snapshot.docs.map((doc) => doc.data());
+                setSets(fetchedSets);
+            })
     }
 
-    toggleMoreActionsOpen = (event) => {
-
-        this.setAnchorEl(event);
-
-        this.setState((prevState) => ({ 
-            moreActionsOpen: !prevState.moreActionsOpen
-        }))
+    // Methods
+    const handleExerciseInstanceSelect = () => {
+        exercisesDispatch({ type: 'SET_SELECTED_EXERCISE', selectedExercise: exercise }); 
+        history.push(`${history.location.pathname}/exercise/${exercise.id}`)
     }
 
-    setAnchorEl = (event) => {
-        const anchorEl = this.state.anchorEl ? undefined : event.currentTarget;
-
-        this.setState(() => ({
-            anchorEl
-        }))
+    const handleExercisePageSelection = () => {
+        history.push(`/exercises/${exercise.id}`);
     }
 
-    handleEditSelection = () => {
-        
+    const handleDeleteExercise = () => {
+        handleCloseMoreActions();
+        setDeleteDialogOpen(true);
     }
 
-    handleDeleteSelection = () => {
-        
+    const onDeleteExercise = async () => {
+        handleCloseDeleteDialog();
+
+        // Find all the sets associated with this exercise instance
+        exerciseInstanceRef.collection('sets').get().then((docs) => {
+            docs.forEach(doc => exerciseInstanceRef.collection('sets').doc(doc.id).delete());
+        });
+        exerciseInstanceRef.delete();
     }
 
+    const handleOpenMoreActions = (event) => {
+        setAnchorEl(event.currentTarget);
+        setMoreActionsOpen(true);
+    }
 
-    render() {
+    const handleCloseMoreActions = () => {
+        setAnchorEl(undefined);
+        setMoreActionsOpen(false);
+    }
 
-        const classes = useStyles();
-        const { exercise, history } = this.props;
+    const handleCloseDeleteDialog = () => {
+        setDeleteDialogOpen(false);
+    }
 
-        return (
-            
-                <ButtonBase 
-                    focusRipple
+    const { exerciseTitle, exerciseModifier } = exercisesState.formatExerciseTitle(exercise);
+
+    return (  
+        <>
+            <ButtonBase 
+                focusRipple
                     style={{width: '100%'}}
                 >
-                <Card className={classes.card}>
-                <Link to={`${history.location.pathname}/${exercise.titlePathFormat}`} className={classes.link}>
-                    <CardContent>
-                        <Typography variant="h5" component="h2">
-                            {exercise.title}
+                <Card className={classes.card} >
+                    <CardContent onClick={handleExerciseInstanceSelect}>
+                        <Typography variant='h5' align='center'>
+                            <strong>{exerciseTitle}</strong>
+                            {exerciseModifier 
+                                && (
+                                    <>
+                                        <br />
+                                        <strong>{exerciseModifier}</strong>
+                                        </>
+                                    )
+                            }
                         </Typography>
-                        <Typography varaint='body2' color="textSecondary">
-                            <strong>Best Set: </strong> 180 lbs x 12
-                            {/* { this.state.dateRange && this.state.dateRange } */}
-                        </Typography>
-                        <Typography variant='body2' color='primary'>
-                            <strong>Completed at: </strong> 2:30pm
-                        </Typography>
-
+                        <br />
+                        {!!sets && (
+                            <>
+                                <Typography variant='h6'>
+                                    <span className={classes.cardField}>Sets completed: </span>
+                                    <span className={classes.cardValue}>{!!sets ? sets.length : 0}</span>
+                                </Typography>
+                                {(sets && sets.length > 0) && (
+                                    <Typography variant='h6'>
+                                        <span className={classes.cardField}>Last Set: </span>
+                                        <span className={classes.cardValue}>{moment(sets[sets.length - 1].completedAt.toDate()).format('h:mm a')}</span>
+                                    </Typography>
+                                )}
+                                
+                            </>
+                        )}
                     </CardContent>
-                    </Link>
                     <CardActions className={classes.cardActions}>
-                        <MoreHoriz onClick={this.toggleMoreActionsOpen}/>
+                        <MoreHoriz onClick={handleOpenMoreActions}/>
                         <Menu
                             id="long-menu"
-                            anchorEl={this.state.anchorEl}
+                            anchorEl={anchorEl}
                             keepMounted
-                            open={this.state.moreActionsOpen}
-                            onClose={this.toggleMoreActionsOpen}
+                            open={moreActionsOpen}
+                            onClose={handleCloseMoreActions}
                             PaperProps={{
                             style: {
                                 maxHeight: 48 * 4.5,
@@ -117,18 +175,52 @@ class ExerciseInstanceCard extends Component {
                             },
                             }}
                         >
-                            <MenuItem  onClick={this.handleEditSelection}>
-                                Edit
+                            <MenuItem  onClick={handleExercisePageSelection}>
+                                <Forward style={{marginRight: '5px'}} />
+                                Exercise Page
                             </MenuItem>
-                            <MenuItem onClick={this.handleDeleteSelection}>
+                            <MenuItem onClick={handleDeleteExercise}>
+                                <Delete style={{marginRight: '5px'}}/>
                                 Delete
                             </MenuItem> 
                         </Menu>
                     </CardActions>
                 </Card>
-                </ButtonBase>
-        )
-    }
+            </ButtonBase>
+
+            {/* Deleteion Confirmation dialog} */}
+            <Dialog
+                open={deleteDialogOpen}
+                onClose={handleCloseDeleteDialog}
+                aria-labelledby="delete-dialog-title"
+                aria-describedby="delete-dialog-description"
+            >
+                <DialogTitle id="delete-dialog-title">{`Delete this exercise from workout?`}</DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="delete-dialog-description">
+                        Deleting an exercise will delete all this exercise's set data for this days workout.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button 
+                        onClick={handleCloseDeleteDialog} 
+                        color="primary"
+                        variant='contained'
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={onDeleteExercise} 
+                        color="secondary" 
+                        variant='contained'
+                    >
+                        <DeleteForever style={{marginRight: '5px'}}/>
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </>
+    )
 }
 
 export default ExerciseInstanceCard;

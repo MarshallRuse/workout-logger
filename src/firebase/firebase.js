@@ -4,7 +4,7 @@ import 'firebase/firestore';
 import 'firebase/analytics';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAcepDbrU_nTeEeG8WKpC1zocSiLdfb0EA",
+    apiKey: "AIzaSyAAO29JBf6qHFPHXvj_P65rgVZWpBbCdOM",
     authDomain: "marshall-fitness-app.firebaseapp.com",
     databaseURL: "https://marshall-fitness-app.firebaseio.com",
     projectId: "marshall-fitness-app",

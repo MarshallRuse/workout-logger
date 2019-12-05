@@ -50,7 +50,7 @@ const styles = theme => ({
 
 const LoginPage = ({ classes, history }) => {
 
-    const { authState, authDispatch } = useContext(AuthContext);
+    const { authDispatch } = useContext(AuthContext);
 
     const [authType, setAuthType] = useState(''); // 'signup' or 'login'
     const [authEmailDialogOpen, setAuthEmailDialogOpen] = useState(false);

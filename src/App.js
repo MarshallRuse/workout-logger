@@ -22,10 +22,24 @@ import pageReducer from './reducers/pageReducer';
 import exercisesReducer from './reducers/exercisesReducer';
 import workoutReducer from './reducers/workoutReducer';
 
+// Utility function
+import listString from './resources/utils/listString';
+
 
 // subverting BrowserRouter's own history 
 // to be used with login and logout in app.js
 export const history = createBrowserHistory();
+
+
+const formatExerciseTitle = (exercise) => {
+  const exerciseTitle = exercise.title;
+  let exerciseModifier = '';
+  if (exercise.modifiers && exercise.modifiers.length > 0){
+    exerciseModifier += '(' + listString(exercise.modifiers) + ')';
+  }
+  return {exerciseTitle, exerciseModifier};
+}
+
 
 const styles = theme => ({
   '@global': {
@@ -35,17 +49,16 @@ const styles = theme => ({
   }
 });
 
-
-// Provider is a HOC that holds the Redux store.
-// It works with 'connect', used in the ExpenseList component, for instance
-const App =() => {
+const App = () => {
   
   // Create Auth reducer state and dispatch
   const [authState, authDispatch] = useReducer(authReducer, {});
   
   const [pageState, pageDispatch] = useReducer(pageReducer, {});
 
-  const [exercisesState, exercisesDispatch] = useReducer(exercisesReducer, {});
+  const [exercisesState, exercisesDispatch] = useReducer(exercisesReducer, {
+    formatExerciseTitle
+  });
 
   const [workoutState, workoutDispatch] = useReducer(workoutReducer, {
     currentWorkout: {}
@@ -108,12 +121,3 @@ const App =() => {
 }
 
 export default withStyles(styles)(App);
-
-
-    
-    
-
-
-
-
-

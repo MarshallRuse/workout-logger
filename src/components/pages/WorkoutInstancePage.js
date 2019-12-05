@@ -1,35 +1,42 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    AppBar,
     Fab,
     Grid, 
     Paper,
     Typography,
     Zoom,
-    Toolbar
 } from '@material-ui/core'; 
-import { makeStyles, useTheme } from '@material-ui/core/styles';
+import { withStyles } from '@material-ui/core/styles';
 import { Add, ArrowBack } from '@material-ui/icons'; 
 
 import moment from 'moment';
 
 import ExerciseInstanceCard from '../elements/cards/ExerciseInstanceCard';
 
-import AuthContext from '../../context/AuthContext';
-import WorkoutContext from '../../context/WorkoutContext';
+import ProvideAppContext, { AppContext } from '../../context/ProvideAppContext';
 
 import { db } from '../../firebase/firebase';
 
 
-const useStyles = makeStyles(theme => ({
+const styles = theme => ({
+    cardGridItem: {
+        width: '100%'
+    },
     container: {
-        height: 'calc(100% - 56px - 56px)'
+        marginTop: '80px',
+        height: 'auto'
+    },
+    dateRow: {
+        backgroundColor: '#fafafa',
+        padding: '20px',
+        position: 'fixed',
+        zIndex: 1000
     },
     fab: {
         position: 'fixed',
-        bottom: theme.spacing(10),
-        right: theme.spacing(4),
+        bottom: theme.spacing(12),
+        right: theme.spacing(5),
     },
     groupHeading: {
         color: 'blue',
@@ -48,10 +55,6 @@ const useStyles = makeStyles(theme => ({
         padding: 20,
         overflowY: 'auto' 
     },
-    titlePaper: {
-        padding: '20px',
-        position: 'fixed',
-    },
     titleRow: {
         alignItems: 'center',
         display: 'flex',
@@ -59,131 +62,167 @@ const useStyles = makeStyles(theme => ({
         padding: '30px',
     },
     toolbar: theme.mixins.toolbar
-}));
+});
 
 
-const WorkoutInstancePage = ({ match }) => {
+class WorkoutInstancePage extends Component {
 
-    const classes = useStyles();
-    const theme = useTheme();
+    static contextType = AppContext;
 
-    const { authState } = useContext(AuthContext);
-
-    const [workout, setWorkout] = useState(undefined);
-    const [exerciseInstances, setExerciseInstances] = useState([]);
-
-    const { workoutState, workoutDispatch } = useContext(WorkoutContext);
-
-    if (!!workout && !!workoutState.currentWorkout ){
-        if (!workoutState.currentWorkout.id || workoutState.currentWorkout.id !== match.params.workoutID){
-            workoutDispatch({ type: 'SET_WORKOUT', currentWorkout: {
-                id: match.params.workoutID,
-                ...workout
-            }})
-        }
+    state = {
+        workout: undefined,
+        exerciseInstances: [],
+        unsubscribe: undefined
     }
 
-    const transitionDuration = {
-        enter: theme.transitions.duration.enteringScreen,
-        exit: theme.transitions.duration.leavingScreen,
+    transitionDuration = {
+        enter: this.context.theme.transitions.duration.enteringScreen,
+        exit: this.context.theme.transitions.duration.leavingScreen,
     };
+    
+    async componentDidMount(){
+        // Set the current page
+        if (this.context.pageState.currentPage !== 'WORKOUT_INSTANCE'){
+            this.context.pageDispatch({ type: 'SET_CURRENT_PAGE', currentPage: 'WORKOUT_INSTANCE' });
+        }
 
-    useEffect(() => {
+        // Fetch the workout data, if any
+        const workoutRef = db.collection('users')
+                            .doc(this.context.authState.uid)
+                            .collection('workouts')
+                            .doc(this.props.match.params.workoutID);
+        const workout = await workoutRef.get();
+        if (workout.exists){
+            this.setState(() => ({ workout: workout.data() }));
+        } 
 
-        async function fetchWorkout(){
-            const workoutRef = db.collection('users').doc(authState.uid).collection('workouts').doc(match.params.workoutID);
-            const workout = await workoutRef.get();
-            if (workout.exists){
-                setWorkout(workout.data());
+        // Subscribe to the exercise instances associated with this workout
+        const unsubscribe = db.collection('users')
+                            .doc(this.context.authState.uid)
+                            .collection('exerciseInstances')
+                            .where('workoutID', '==', this.props.match.params.workoutID)
+                            .onSnapshot((snapshot) => {
+                                const exerciseInstanceDocs = snapshot.docs;
+                                const exerciseInstances = exerciseInstanceDocs.map(doc => ({
+                                    id: doc.id,
+                                    ...doc.data()
+                                }));
+                                this.setState(() => ({ exerciseInstances }));                
+                            });
+        this.setState(() => ({ unsubscribe }));
+
+        
+    }
+
+    componentDidUpdate(){
+        // Once the workout has been obtained, set the current workout
+        if (!!this.state.workout && !!this.context.workoutState.currentWorkout ){
+            if (!this.context.workoutState.currentWorkout.id || this.context.workoutState.currentWorkout.id !== this.props.match.params.workoutID){
+                this.context.workoutDispatch({ type: 'SET_WORKOUT', currentWorkout: {
+                    id: this.props.match.params.workoutID,
+                    ...this.state.workout
+                }})
             }
         }
 
-        if (!workout){
-            fetchWorkout();
+        
+        
+    }
+   
+    componentWillUnmount(){
+        if (this.state.unsubscribe){
+            this.state.unsubscribe();
         }
-        
-        const unsubscribe = db.collection(`users/${authState.uid}/workouts/${match.params.workoutID}/exerciseInstances`).onSnapshot((snapshot) => {
-        let changes = snapshot.docChanges();
-        const exerciseInstances = changes.filter((change) => (change.type === 'added' || change.type === 'modified') && change.doc );
-        setExerciseInstances(exerciseInstances);
-            
-        });
-        
-        return () => {
-            unsubscribe();
-        }
+    }
 
-    }, [authState.uid, match.params.workoutID, workout]);
-
-
-    const addExerciseInstance = () => {
+    // Methods
+    addExerciseInstance = () => {
         
     }
 
-    const editExerciseInstance = () => {
+    editExerciseInstance = () => {
 
     }
 
-    const deleteExerciseInstance = () => {
+    deleteExerciseInstance = () => {
 
     }
 
-    return (
-        <>
-            <Paper>
-            <Grid container justify='center' alignItems='center' className={classes.titlePaper}>
-                    
-                <Grid item xs={12}>
-                    <Link to='/workouts' className={classes.link}>
-                        <ArrowBack style={{height: '100%'}} />
-                    </Link>
-                    {workout && (
-                            <Typography variant='h6' align='center'>
-                                {moment(workout.date.toDate()).format('MMMM Do, YYYY')}
-                            </Typography>
-                    )}
-                </Grid>
-            </Grid>
-            </Paper>
-                    
-            <Grid container direction='row' justify='center' alignItems='center' className={classes.container}>
-                { (exerciseInstances && exerciseInstances.length > 0) 
-                    ?   exerciseInstances.map((exerciseInstance, index) => (
-                                <Grid item xs={10} key={index}>
-                                    <Typography variant='h5' align='left' className={classes.groupHeading}>
-                                        {exerciseInstance.title}
-                                    </Typography>
-                                    <ExerciseInstanceCard 
-                                        exerciseInstance={exerciseInstance.doc} 
-                                        editWorkout={editExerciseInstance} 
-                                        deleteWorkout={deleteExerciseInstance} 
-                                    />
-                                </Grid>
-                            )
-                        )
-                    :   <Grid item xs={10}>
-                            <Paper className={classes.paper}>
-                                <Typography variant='subtitle1' align='center' style={{color: '#7b7b7b'}}>
-                                    No exercises to display for this workout.  
-                                    <br />Better get moving!
+    render(){
+        const { history, match, classes } = this.props;
+        return (
+            <>
+                <Paper>
+                <Grid 
+                    container 
+                    justify='center' 
+                    alignItems='center' 
+                    className={classes.dateRow}
+                >
+                    <Grid item xs={12}>
+                        <Link to='/workouts' className={classes.link}>
+                            <ArrowBack style={{height: '100%'}} />
+                        </Link>
+                        {this.state.workout && (
+                                <Typography variant='h6' align='center'>
+                                    {moment(this.state.workout.date.toDate()).format('MMMM Do, YYYY')}
                                 </Typography>
-                            </Paper>
-                        </Grid>
-                }
-            </Grid>  
-            <Zoom
-                in={true}
-                timeout={transitionDuration}
-                unmountOnExit
-            >
-                <Link to={`/workouts/${match.params.workoutID}/exercise_selection`} >
-                    <Fab aria-label='Add' className={classes.fab} color='secondary'>
-                        <Add />
-                    </Fab>
-                </Link>
-            </Zoom>
-        </>
-    )
-}
+                        )}
+                    </Grid>
+                </Grid>
+                </Paper>
+                        
+                <Grid 
+                    container 
+                    direction='column'
+                    justify='center' 
+                    alignItems='center' 
+                    className={classes.container}
+                >
+                    { (this.state.exerciseInstances && this.state.exerciseInstances.length > 0) 
+                        ?   this.state.exerciseInstances.map((exerciseInstance, index) => {
+                                    const exercise = this.context.exercisesState.exercises.find(ex => ex.id === exerciseInstance.exerciseID);
+                                    return (
+                                        <Grid item xs={10} key={index} className={classes.cardGridItem}>
+                                            <ExerciseInstanceCard 
+                                                exercise={exercise} 
+                                                exerciseInstance={exerciseInstance}
+                                                history={history}
+                                            />
+                                        </Grid>
+                                )
+                            })
+    
+                        :   <Grid item xs={10}>
+                                <Paper className={classes.paper}>
+                                    <Typography variant='subtitle1' align='center' style={{color: '#7b7b7b'}}>
+                                        No exercises to display for this workout.  
+                                        <br />Better get moving!
+                                    </Typography>
+                                </Paper>
+                            </Grid>
+                    }
+                </Grid>  
+                <Zoom
+                    in={true}
+                    timeout={this.transitionDuration}
+                    unmountOnExit
+                >
+                    <Link to={`/workouts/${match.params.workoutID}/exercise_selection`} >
+                        <Fab aria-label='Add' className={classes.fab} color='secondary'>
+                            <Add />
+                        </Fab>
+                    </Link>
+                </Zoom>
+            </>
+        )
+    }
+}   
 
-export default WorkoutInstancePage;
+const WorkoutInstancePageWithContext = props => (
+    <ProvideAppContext>
+        <WorkoutInstancePage {...props} />
+    </ProvideAppContext>
+);
+
+export default withStyles(styles)(WorkoutInstancePageWithContext);

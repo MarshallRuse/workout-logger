@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import moment from 'moment';
+import React, { useState, useEffect, useContext } from 'react';
 import MomentUtils from '@date-io/moment';
-
+import moment from 'moment';
 import { 
     Button,
     ExpansionPanel,
@@ -19,8 +18,9 @@ import {
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import { Add, Cancel, CheckCircle, DeleteForever, ExpandMore, Remove } from '@material-ui/icons';
-
 import { MuiPickersUtilsProvider, TimePicker } from '@material-ui/pickers';
+
+import WorkoutContext from '../../context/WorkoutContext';
 
 
 const useStyles = makeStyles(theme => ({
@@ -103,19 +103,27 @@ const useStyles = makeStyles(theme => ({
     }
 }));
 
-const SetControls = ({ laterality, editMode, setToEdit, onCreateSet, onEditSet, onDeleteSet }) => {
+const SetControls = ({ 
+    laterality, 
+    editMode, 
+    setToEdit, 
+    prevSetStats,
+    onCreateSet, 
+    onEditSet, 
+    onDeleteSet 
+}) => {
     const classes = useStyles();
 
+    //Context
+    const { workoutState } = useContext(WorkoutContext);
+
     // State
-    if (editMode && setToEdit){
-        console.log('Here! SetToEdit: ', setToEdit);
-        
-    }
     const [weight, setWeight] = useState('');
     const [reps, setReps] = useState('');
     const [side, setSide] = useState('');
     const [units, setUnits] = useState('lbs');
-    const [selectedTime, setSelectedTime] = useState('');
+    const [selectedTime, setSelectedTime] = useState(new Date());
+    const [timeWasSelected, setTimeWasSelected] = useState(false);
     const [editValuesFilled, setEditValuesFilled] = useState(false);
 
 
@@ -131,6 +139,17 @@ const SetControls = ({ laterality, editMode, setToEdit, onCreateSet, onEditSet, 
             setEditValuesFilled(true);
         }
     }, [editValuesFilled, editMode, setToEdit])
+
+    useEffect(() => {
+        if (prevSetStats){
+            setWeight(prevSetStats.weight);
+            setReps(prevSetStats.reps);
+            setUnits(prevSetStats.units);
+            setSelectedTime(new Date());
+        }
+    }, [prevSetStats]);
+
+
     // methods
     const handleWeightChange = (e) => {
         const weight = e.target.value;
@@ -196,6 +215,7 @@ const SetControls = ({ laterality, editMode, setToEdit, onCreateSet, onEditSet, 
 
     const handleTimeChange = (time) => {
         setSelectedTime(time);
+        setTimeWasSelected(true);
     }
 
     const addSet = () =>{
@@ -210,9 +230,17 @@ const SetControls = ({ laterality, editMode, setToEdit, onCreateSet, onEditSet, 
         }
 
         let timeCompleted = selectedTime;
-        if (!selectedTime){
-            timeCompleted = new Date();
+        if (!timeWasSelected){
+            timeCompleted = moment(new Date());
         }
+        const date = moment(workoutState.currentWorkout.date.toDate());
+        const dateCorrectTime = moment().set({
+            year: date.get('year'),
+            month: date.get('month'), 
+            date: date.get('date'), 
+            hour: timeCompleted.get('hour'),
+            minute: timeCompleted.get('minute')
+        });
         
         const setObj = {
             weightLbs,
@@ -220,7 +248,7 @@ const SetControls = ({ laterality, editMode, setToEdit, onCreateSet, onEditSet, 
             reps,
             units,
             side,
-            completedAt: timeCompleted
+            completedAt: dateCorrectTime.toDate()
         }
 
         onCreateSet(setObj);
@@ -242,9 +270,18 @@ const SetControls = ({ laterality, editMode, setToEdit, onCreateSet, onEditSet, 
         }
 
         let timeCompleted = selectedTime;
-        if (!selectedTime){
-            timeCompleted = new Date();
+        if (!timeWasSelected){
+            timeCompleted = moment(new Date());
         }
+
+        const date = moment(workoutState.currentWorkout.date.toDate());
+        const dateCorrectTime = moment().set({
+            year: date.get('year'),
+            month: date.get('month'), 
+            date: date.get('date'), 
+            hour: timeCompleted.get('hour'),
+            minute: timeCompleted.get('minute')
+        });
         
         const setObj = {
             id: setToEdit.id,
@@ -253,7 +290,7 @@ const SetControls = ({ laterality, editMode, setToEdit, onCreateSet, onEditSet, 
             reps,
             units,
             side,
-            completedAt: timeCompleted
+            completedAt: dateCorrectTime.toDate()
         }
 
         onEditSet(setObj);
@@ -337,6 +374,7 @@ const SetControls = ({ laterality, editMode, setToEdit, onCreateSet, onEditSet, 
                         className={classes.bigButton}
                         onClick={handleDecrementReps}
                         fullWidth
+                        autoFocus={true}
                     >
                         <Remove fontSize='large' />
                     </Button>

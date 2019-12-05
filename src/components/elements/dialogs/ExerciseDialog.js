@@ -11,19 +11,15 @@ import {
     FormLabel,
     InputLabel,
     ListItemText,
-    Menu,
     MenuItem,
     Radio,
     RadioGroup,
     Select,
-    Typography,
     TextField,
 } from '@material-ui/core';
-import { DatePicker } from '@material-ui/pickers';
 import { makeStyles, useTheme } from '@material-ui/core/styles';
 import { Cancel, CheckCircle } from '@material-ui/icons';
 import { MuiPickersUtilsProvider } from '@material-ui/pickers';
-import moment from 'moment';
 import MomentUtils from '@date-io/moment';
 
 import AuthContext from '../../../context/AuthContext';
@@ -58,6 +54,10 @@ const useStyles = makeStyles(theme => ({
     input: {
         marginTop: '20px',
         marginBottom: '20px'
+    },
+    spaceApart: {
+        display: 'flex',
+        justifyContent: 'space-between'
     },
 }));
 
