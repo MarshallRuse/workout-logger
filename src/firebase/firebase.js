@@ -4,14 +4,14 @@ import 'firebase/firestore';
 import 'firebase/analytics';
 
 const firebaseConfig = {
-    apiKey: "AIzaSyAAO29JBf6qHFPHXvj_P65rgVZWpBbCdOM",
-    authDomain: "marshall-fitness-app.firebaseapp.com",
-    databaseURL: "https://marshall-fitness-app.firebaseio.com",
-    projectId: "marshall-fitness-app",
-    storageBucket: "marshall-fitness-app.appspot.com",
-    messagingSenderId: "686743805821",
-    appId: "1:686743805821:web:224f40b79bd81bf69b7614",
-    measurementId: "G-XB8H31N9WS"
+    apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+    authDomain: process.env.REACT_APP_AUTH_DOMAIN,
+    databaseURL: process.env.REACT_APP_DATABASE_URL,
+    projectId: process.env.REACT_APP_PROJECT_ID,
+    storageBucket: process.env.REACT_APP_STORAGE_BUCKET,
+    messagingSenderId: process.env.REACT_APP_MESSAGING_SENDER_ID,
+    appId: process.env.REACT_APP_APP_ID,
+    measurementId: process.env.REACT_APP_MEASUREMENT_ID
 };
   // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
