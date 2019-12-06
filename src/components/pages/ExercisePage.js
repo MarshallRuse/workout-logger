@@ -27,6 +27,9 @@ const useStyles = makeStyles(theme => ({
         paddingTop: '30px',
         paddingBottom: '30px'
     },
+    deleteDialogPaper: {
+        padding: '10px'
+    },
     link: {
         alignItems: 'center',
         display: 'flex',
@@ -136,17 +139,6 @@ const ExercisePage = ({ match, history }) => {
                     <Grid container justify='space-between'>
                         <Grid item xs={5}>
                             <Button 
-                                color='primary' 
-                                variant='contained' 
-                                onClick={handleEditExercise}
-                                fullWidth
-                            >
-                                <Edit style={{marginRight: '5px'}} />
-                                Edit
-                            </Button>
-                        </Grid>
-                        <Grid item xs={5}>
-                            <Button 
                                 color='secondary' 
                                 variant='contained' 
                                 onClick={handleDeleteExercise}
@@ -154,6 +146,17 @@ const ExercisePage = ({ match, history }) => {
                             >
                                 <DeleteForever style={{marginRight: '5px'}}/>
                                 Delete
+                            </Button>
+                        </Grid>
+                        <Grid item xs={5}>
+                            <Button 
+                                color='primary' 
+                                variant='contained' 
+                                onClick={handleEditExercise}
+                                fullWidth
+                            >
+                                <Edit style={{marginRight: '5px'}} />
+                                Edit
                             </Button>
                         </Grid>
                     </Grid>
@@ -174,6 +177,7 @@ const ExercisePage = ({ match, history }) => {
                 onClose={closeDeleteDialog}
                 aria-labelledby="delete-dialog-title"
                 aria-describedby="delete-dialog-description"
+                classes={{ paper: classes.deleteDialogPaper }}
             >
                 <DialogTitle id="delete-dialog-title">{`Delete ${exerciseTitle}?`}</DialogTitle>
                 <DialogContent>

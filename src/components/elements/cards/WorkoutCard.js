@@ -51,6 +51,9 @@ const useStyles = makeStyles(theme => ({
         marginTop: '5px',
 
     },
+    deleteDialogPaper: {
+        padding: '10px'
+    },
     flags: {
         marginRight: '10px',
         marginTop: '5px',

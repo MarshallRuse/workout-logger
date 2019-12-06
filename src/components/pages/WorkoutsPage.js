@@ -19,7 +19,10 @@ import { db } from '../../firebase/firebase';
 
 const styles = theme => ({
     cardGridItem: {
-        width: '100%'
+        width: '100%',
+        '&:last-of-type': {
+            marginBottom: '70%'
+        }
     },
     container: {
         height: 'auto',

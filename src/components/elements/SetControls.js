@@ -82,7 +82,6 @@ const useStyles = makeStyles(theme => ({
         color: theme.palette.secondary.light
     },
     radioLabel: {
-        color: '#fff',
         fontSize: '1.5rem',
         fontWeight: 700
     },

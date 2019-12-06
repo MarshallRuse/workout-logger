@@ -175,24 +175,24 @@ const LoginPage = ({ classes, history }) => {
                     fullWidth
                 />
                 <div className={[classes.input, classes.spaceApart].join(' ')}>
-                <Button 
-                    style={{marginRight: '10px'}}
-                    color="primary" 
-                    variant='contained'
-                    onClick={authType === 'signup' ? onSignUp : onLogin}
-                    disabled={!email || password.length < 6}
-                >
-                    <CheckCircle style={{marginRight: '5px'}} fontSize='small' />
-                    {authType === 'signup' ? 'Sign Up' : 'Login'}
-                </Button>
-                <Button 
-                    color="secondary" 
-                    variant='contained'
-                    onClick={handleCancel}
-                >
-                    <Cancel style={{marginRight: '5px'}} fontSize='small' />
-                    Cancel
-                </Button>
+                    <Button 
+                        color="secondary" 
+                        variant='contained'
+                        onClick={handleCancel}
+                    >
+                        <Cancel style={{marginRight: '5px'}} fontSize='small' />
+                        Cancel
+                    </Button>
+                    <Button 
+                        style={{marginRight: '10px'}}
+                        color="primary" 
+                        variant='contained'
+                        onClick={authType === 'signup' ? onSignUp : onLogin}
+                        disabled={!email || password.length < 6}
+                    >
+                        <CheckCircle style={{marginRight: '5px'}} fontSize='small' />
+                        {authType === 'signup' ? 'Sign Up' : 'Login'}
+                    </Button>
             </div>
             </DialogContent>
         </Dialog>

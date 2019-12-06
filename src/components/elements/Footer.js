@@ -35,9 +35,6 @@ const Footer = ({ classes  }) => {
             <div className={classes.toolbar} />
             <AppBar position="fixed" color="primary" className={classes.appBar}>
                 <Toolbar>
-                    <IconButton color='inherit'>
-                        <FilterList />
-                    </IconButton>
                 </Toolbar>
             </AppBar>
         </>);

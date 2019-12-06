@@ -303,7 +303,15 @@ const ExerciseDialog = ({ open, onClose, editMode, exerciseToEdit, history }) =>
                     <br />
                     <div className={[classes.input, classes.spaceApart].join(' ')}>
                         <Button 
-                            style={{marginRight: '10px'}}
+                            color="secondary" 
+                            variant='contained'
+                            onClick={handleCancel}
+                            style={{marginRight: '20px'}}
+                        >
+                            <Cancel style={{marginRight: '5px'}} fontSize='small' />
+                            Cancel
+                        </Button>
+                        <Button 
                             color="primary" 
                             variant='contained'
                             onClick={editMode ? onEditExercise : onCreateExercise}
@@ -311,14 +319,6 @@ const ExerciseDialog = ({ open, onClose, editMode, exerciseToEdit, history }) =>
                         >
                             <CheckCircle style={{marginRight: '5px'}} fontSize='small' />
                             {editMode ? 'Edit' : 'Create'}
-                        </Button>
-                        <Button 
-                            color="secondary" 
-                            variant='contained'
-                            onClick={handleCancel}
-                        >
-                            <Cancel style={{marginRight: '5px'}} fontSize='small' />
-                            Cancel
                         </Button>
                     </div>
                 </form>
