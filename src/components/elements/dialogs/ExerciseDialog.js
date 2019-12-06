@@ -104,7 +104,6 @@ const ExerciseDialog = ({ open, onClose, editMode, exerciseToEdit, history }) =>
     }
 
     const handleEquipmentChange = (e) => {
-        console.log('Selected Equipment: ', e.target.value)
         // If other equipment has been selected, unselect None
         let equipments = [];
         if (e.target.value.length > 1 

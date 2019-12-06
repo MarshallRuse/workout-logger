@@ -2,6 +2,7 @@
   "name": "fitness-app",
   "version": "0.1.0",
   "private": true,
+  "main": "index.js",
   "engines": {
     "node": "12.13.0",
     "npm": "6.12.0"
@@ -11,6 +12,7 @@
     "@material-ui/core": "^4.6.1",
     "@material-ui/icons": "^4.5.1",
     "@material-ui/pickers": "^3.2.8",
+    "express": "^4.17.1",
     "firebase": "^7.4.0",
     "history": "^4.10.1",
     "lodash": "^4.17.15",
@@ -22,11 +24,12 @@
     "typeface-roboto": "0.0.75"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "heroku-postbuild": "npm install && npm run build",
+    "dev-start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "start": "node server/server.js",
+    "heroku-postbuild": "npm install && npm run build"
   },
   "eslintConfig": {
     "extends": "react-app"
