@@ -13,7 +13,7 @@
     "@material-ui/pickers": "^3.2.8",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "firebase": "^7.4.0",
+    "firebase": "^10.9.0",
     "history": "^4.10.1",
     "lodash": "^4.17.15",
     "moment": "^2.24.0",
